@@ -11,7 +11,7 @@ AI system for sentiment analysis of niche e‑commerce product reviews (lip balm
 
 ## How to run
 
-Option A — Local (Windows/PowerShell)
+Local (Windows/PowerShell)
 ```powershell
 # Create venv and install
 python -m venv .venv
@@ -34,7 +34,7 @@ python app.py
 # Open http://127.0.0.1:5000
 ```
 
-Option B — Docker Compose
+Docker Compose
 ```powershell
 docker compose up --build
 
@@ -44,10 +44,6 @@ docker compose up --build
 # (First run) pull model inside the Ollama container
 docker exec -it prs-ollama ollama pull gemma2:2b-instruct
 ```
-
-Notes
-- The app points to Ollama at `OLLAMA_BASE_URL` (default http://ollama:11434 in Compose; http://127.0.0.1:11434 locally). Set `OLLAMA_MODEL` to change models.
-- Volumes: `artifacts/`, `uploads/`, and `data/` are mounted in Compose for persistence.
 
 ## Example Usage
 This is the [demo video](https://drive.google.com/file/d/1WfZFhbY2cyVA1nnKhlVKpCHKmXD4K3Je/view?usp=sharing) 
