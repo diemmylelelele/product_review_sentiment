@@ -1,8 +1,6 @@
 datasets==3.6.0
 pandas
 numpy
-chromadb
-sentence-transformers
 transformers
 pillow
 tqdm
@@ -11,10 +9,7 @@ requests
 faiss-cpu
 sentence-transformers
 open_clip_torch
-pillow
-torch
 torchvision
-requests
 fastapi
 uvicorn
 ollama

@@ -122,15 +122,6 @@ def context(neighbors: List[Dict], k_limit: int = 3) -> str:
         lines.append(line)
     return "\n".join(lines)
 
-
-# ---------- LLM (LangChain + Ollama) ----------
-# llm = OllamaLLM(
-#     model="moondream",
-#     temperature=0.2,
-#     num_ctx=512,
-#     num_predict=64,
-# )
-
 llm = OllamaLLM(model = 'granite3.2-vision:latest', temperature=0.2) 
 
 PROMPT_TMPL = ChatPromptTemplate.from_template(

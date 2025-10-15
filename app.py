@@ -72,5 +72,4 @@ def index():
         )
 
 if __name__ == "__main__":
-    # threaded=True lets Flask serve /uploads/* while the same request runs classification
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
