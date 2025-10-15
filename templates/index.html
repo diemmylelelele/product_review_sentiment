@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel">
+    <h1 class="title">Ecommerce Product Reviews Sentiment Analysis</h1>
+
+    <form class="form" method="POST" enctype="multipart/form-data" id="form">
+      <label class="label">Select number of similar reviews</label>
+      <div class="slider-wrap">
+        <input id="k" type="range" min="1" max="10" step="1" name="k" value="{{ k or 3 }}" class="slider">
+        <span id="kVal" class="slider-value" aria-hidden="true">{{ k or 3 }}</span>
+      </div>
+
+      <div class="input-row">
+        <div class="input-wrap">
+          <input
+            type="text"
+            name="text"
+            class="text-input"
+            placeholder="Enter text review"
+            value="{{ text or '' }}"
+          />
+          <!-- hidden file input -->
+          <input id="image" type="file" name="image" accept=".png,.jpg,.jpeg,.webp" class="file-hidden" />
+          <!-- upload icon button -->
+          <button type="button" id="uploadBtn" class="icon-btn" title="Upload image" aria-label="Upload image">
+            <!-- upload SVG -->
+            <svg viewBox="0 0 24 24" class="icon">
+              <path d="M12 16V4m0 0l-4 4m4-4l4 4M6 16h12a4 4 0 0 1 0 8H6a4 4 0 0 1 0-8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <button id="submitBtn" type="submit" class="btn">Submit</button>
+      </div>
+    </form>
+  </section>
+
+  {% if error %}
+    <section class="panel alert">
+      <strong>Error:</strong> {{ error }}
+    </section>
+  {% endif %}
+
+  {% if result %}
+    <section class="panel result">
+      {% set label = (result['prediction'] or '').strip().lower() %}
+      <div class="result-line">
+        <span class="badge
+          {% if label == 'positive' %}badge-pos{% elif label == 'negative' %}badge-neg{% else %}badge-neu{% endif %}
+        ">{{ result['prediction'] }}</span>
+      </div>
+
+      <div class="meta">
+        {% if image_url %}
+          <div><span class="muted">Image:</span> <code class="clip">{{ image_url }}</code></div>
+        {% endif %}
+        {% if text %}
+          <div><span class="muted">Text:</span> <code class="clip">{{ text[:220] }}{% if text|length > 220 %}…{% endif %}</code></div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="h2">Top-{{ k }} Similar Reviews</h2>
+      {% if not result['neighbors'] %}
+        <p class="muted">No neighbors found.</p>
+      {% else %}
+        <div class="neighbors">
+          {% for n in result['neighbors'] %}
+            {% include "partials/neighbor.html" %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // progress-style slider background
+  const slider = document.getElementById('k');
+  const kVal = document.getElementById('kVal');
+  function paintSlider() {
+    const min = +slider.min, max = +slider.max, val = +slider.value;
+    const pct = ((val - min) / (max - min)) * 100;
+    slider.style.background = `linear-gradient(to right,#a8df66 ${pct}%, #ccc ${pct}%)`;
+    // Update badge text and position
+    if (kVal) {
+      kVal.textContent = String(val);
+      kVal.style.left = `calc(${pct}% - 12px)`; // center approx over thumb
+    }
+  }
+  if (slider) {
+    paintSlider();
+    slider.addEventListener('input', paintSlider);
+    window.addEventListener('resize', paintSlider);
+  }
+
+  // upload icon opens file picker
+  const upBtn = document.getElementById('uploadBtn');
+  const file  = document.getElementById('image');
+  if (upBtn && file) upBtn.addEventListener('click', () => file.click());
+
+  // subtle loading state
+  const form = document.getElementById('form');
+  const btn  = document.getElementById('submitBtn');
+  if (form && btn) {
+    form.addEventListener('submit', ()=>{
+      btn.disabled = true;
+      btn.classList.add('loading');
+      btn.textContent = 'Submitting…';
+    });
+  }
+</script>
+{% endblock %}

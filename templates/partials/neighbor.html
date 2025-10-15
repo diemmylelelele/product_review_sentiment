@@ -1,0 +1,23 @@
+<div class="neighbor">
+  <div class="neighbor-media">
+    {% if n['image_url'] %}
+      <img src="{{ n['image_url'] }}" alt="neighbor image" loading="lazy" />
+    {% else %}
+      <div class="placeholder">No image</div>
+    {% endif %}
+  </div>
+  <div class="neighbor-body">
+    <div class="neighbor-top">
+      <span class="muted small">score {{ "%.3f"|format(n['score']) }}</span>
+      <span class="chip
+        {% if n['sentiment'] == 'positive' %} chip-pos
+        {% elif n['sentiment'] == 'negative' %} chip-neg
+        {% else %} chip-neu
+        {% endif %}
+      ">{{ n['sentiment'] }}</span>
+    </div>
+    {% if n['text'] %}
+      <div class="neighbor-text">{{ n['text'] }}</div>
+    {% endif %}
+  </div>
+</div>
