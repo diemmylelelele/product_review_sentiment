@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: prs-web
+    ports:
+      - "5000:5000"
+    environment:
+      # Point to Ollama service container by default; change if running Ollama locally
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=gemma2:2b-instruct
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: prs-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      # Persist models on host to avoid re-downloads
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_models:

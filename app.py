@@ -4,8 +4,8 @@ from pathlib import Path
 from werkzeug.utils import secure_filename
 from flask import Flask, request, send_from_directory, url_for, render_template
 
-# import your FAISS + LLM pipeline
-from main import classify
+# import FAISS + LLM pipeline
+from classifier import classify
 
 BASE_DIR = Path(__file__).parent.resolve()
 UPLOAD_DIR = BASE_DIR / "uploads"
