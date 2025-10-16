@@ -38,7 +38,7 @@ def data_fetching() -> pd.DataFrame:
         )
     )
 
-    # Select useful columns (retain parent_asin for retrieval/dedup)
+    # Select useful columns
     df = df[["text", "images", "sentiment"]]
     # Create the image_url column
     df = df.reset_index(drop=True)

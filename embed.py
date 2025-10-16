@@ -18,6 +18,7 @@ TXT_META  = OUT / "text_meta.json"
 IMG_META  = OUT / "image_meta.json"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+# ---------- encoders ----------
 txt_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device=device)
 clip_model, _, preprocess = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai")
 clip_model = clip_model.to(device)
@@ -72,9 +73,9 @@ def main():
                     image_vecs.append(v)
                     image_meta.append(payload)
 
-    # FAISS indices (inner product = cosine because we normalized)
+    # FAISS indices
     if text_vecs:
-        X = np.vstack(text_vecs).astype("float32")
+        X = np.vstack(text_vecs).astype("float32") 
         idx_t = faiss.IndexFlatIP(X.shape[1])
         idx_t.add(X)
         faiss.write_index(idx_t, str(TXT_INDEX))

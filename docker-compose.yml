@@ -10,12 +10,14 @@ services:
       # Point to Ollama service container by default; change if running Ollama locally
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=gemma2:2b-instruct
+      - INGEST_EMBED_URL=http://ingest:8001
     volumes:
       - ./artifacts:/app/artifacts
       - ./uploads:/app/uploads
       - ./data:/app/data
     depends_on:
       - ollama
+      - ingest
 
   ollama:
     image: ollama/ollama:latest
@@ -25,6 +27,17 @@ services:
     volumes:
       # Persist models on host to avoid re-downloads
       - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+  ingest:
+    build: .
+    container_name: prs-ingest
+    command: uvicorn services.ingest_embed_service:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./data:/app/data
     restart: unless-stopped
 
 volumes:

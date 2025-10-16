@@ -1,17 +1,17 @@
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import json, numpy as np
+import os
 import faiss
 from sentence_transformers import SentenceTransformer
 import open_clip, torch
 from PIL import Image
 import io, requests
-
 from langchain.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 import re
 
-# ---------- paths (same as we used earlier for FAISS) ----------
+# ---------- paths ----------
 ART = Path("artifacts/faiss")
 TXT_INDEX = ART / "text.index"
 IMG_INDEX = ART / "image.index"
@@ -24,11 +24,30 @@ txt_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device
 clip_model, _, preprocess = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai")
 clip_model = clip_model.to(device)
 
-# ---------- load FAISS + meta lazily ----------
-idx_t = faiss.read_index(str(TXT_INDEX)) if TXT_INDEX.exists() else None
-idx_i = faiss.read_index(str(IMG_INDEX)) if IMG_INDEX.exists() else None
-text_meta = json.loads(TXT_META.read_text("utf-8")) if TXT_META.exists() else []
-image_meta = json.loads(IMG_META.read_text("utf-8")) if IMG_META.exists() else []
+# ---------- FAISS + meta, loaded on demand ----------
+idx_t = None
+idx_i = None
+text_meta: List[Dict] = []
+image_meta: List[Dict] = []
+
+def _load_indices_if_needed():
+
+    global idx_t, idx_i, text_meta, image_meta
+    changed = False
+    if idx_t is None and TXT_INDEX.exists():
+        idx_t = faiss.read_index(str(TXT_INDEX))
+        changed = True
+    if idx_i is None and IMG_INDEX.exists():
+        idx_i = faiss.read_index(str(IMG_INDEX))
+        changed = True
+    if (not text_meta) and TXT_META.exists():
+        text_meta = json.loads(TXT_META.read_text("utf-8"))
+        changed = True
+    if (not image_meta) and IMG_META.exists():
+        image_meta = json.loads(IMG_META.read_text("utf-8"))
+        changed = True
+    if changed:
+        print("[faiss] indices/meta loaded")
 
 
 def embed_text_q(s: str) -> np.ndarray:
@@ -89,7 +108,6 @@ def merge(text_hits: List[Dict], image_hits: List[Dict], k: int) -> List[Dict]:
         k: The maximum number of unique neighbors to return.
     
     '''
-    # import numpy as np
     def norm(hs):
         if not hs: return []
         sc = np.array([h["score"] for h in hs], dtype="float32")
@@ -105,7 +123,7 @@ def merge(text_hits: List[Dict], image_hits: List[Dict], k: int) -> List[Dict]:
         if len(merged) == k: break
     return merged
 
-def context(neighbors: List[Dict], k_limit: int = 3) -> str:
+def context(neighbors: List[Dict], k_limit: int = 6) -> str:
     '''
     This function constructs a context block string from the top-k_limit neighbors.
     Input: 
@@ -114,7 +132,7 @@ def context(neighbors: List[Dict], k_limit: int = 3) -> str:
     '''
     lines = []
     for i, n in enumerate(neighbors[:k_limit], 1):
-        t = (n.get("text") or "").replace("\n", " ")[:200]  # keep tiny
+        t = (n.get("text") or "").replace("\n", " ")[:200] 
         s = n.get("sentiment")
         im = n.get("image_url")
         line = f"[EX{i}] sentiment={s}; text={t}"
@@ -122,7 +140,11 @@ def context(neighbors: List[Dict], k_limit: int = 3) -> str:
         lines.append(line)
     return "\n".join(lines)
 
-llm = OllamaLLM(model = 'granite3.2-vision:latest', temperature=0.2) 
+# ---------- LLM (LangChain + Ollama) ----------
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "granite3.2-vision:latest")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434"))
+os.environ.setdefault("OLLAMA_HOST", OLLAMA_BASE_URL)
+llm = OllamaLLM(model=OLLAMA_MODEL, temperature=0.2, base_url=OLLAMA_BASE_URL) # use low temp for classification
 
 PROMPT_TMPL = ChatPromptTemplate.from_template(
     """You are a sentiment classifier for LIP BALM product reviews.
@@ -132,7 +154,6 @@ Output:
 
 QUERY:
 {text_part}
-
 IMAGE (if any):
 {image_part}
 
@@ -144,6 +165,15 @@ SIMILAR_REVIEWS:
 LABELS = {"negative","neutral","positive"}
 
 def classify_with_llm(query_text, query_image_url, context_block):
+    '''
+    This function classifies the sentiment of a review using a language model (LLM) with provided context.
+    Input:
+        query_text: The text of the review to classify.
+        query_image_url: The URL of the image associated with the review (if any).
+        context_block: A string containing context from similar reviews.
+    Output:
+        The predicted sentiment label as a string: "negative", "neutral", or "positive".
+    '''
     text_part  = f"TEXT: {query_text[:1500]}" if query_text else "TEXT: <none>"
     image_part = f"IMAGE_URL: {query_image_url}" if query_image_url else "IMAGE_URL: <none>"
 
@@ -165,6 +195,7 @@ def classify(text: Optional[str]=None, image_url: Optional[str]=None, k: int = 5
         image_url: The URL of the review image to classify.
         k: The number of nearest neighbors to retrieve for context.
     '''
+    _load_indices_if_needed()
     text_hits, image_hits = [], []
     if text:
         D, I = search(idx_t, embed_text_q(text), k)
@@ -175,11 +206,9 @@ def classify(text: Optional[str]=None, image_url: Optional[str]=None, k: int = 5
             D, I = search(idx_i, v, k)
             image_hits = build_neighbors(D, I, image_meta)
 
-    neighbors = merge(text_hits, image_hits, k)
-    ctx = context(neighbors, k_limit=min(k, 3))   # keep small = stable
+    neighbors = merge(text_hits, image_hits, k) # unique, sorted
+    ctx = context(neighbors, k_limit=min(k, 3))  
+    
     out = classify_with_llm(text, image_url, ctx)
     return {"neighbors": neighbors, "prediction": out}
-
-if __name__ == "__main__":
-    demo = classify(text="Wow, fantastics, gonna buy it again", image_url="/images.jpg", k=3)
-    print(json.dumps(demo, indent=2))
+    

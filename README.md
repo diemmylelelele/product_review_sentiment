@@ -1,34 +1,29 @@
 # Product Review Sentiment (Multimodal)
 
-AI system for sentiment analysis of niche e‑commerce product reviews (lip balm). Supports text and/or image input, retrieves similar examples, and predicts positive/neutral/negative using LLM.
+AI system for sentiment analysis of niche e‑commerce product reviews (lip balm). Supports text and/or image input, retrieves similar examples, and predicts positive/neutral/negative using an LLM.
 
-## What it does
+## System overview
 - Ingests Amazon Reviews 2023 (All_Beauty) from Hugging Face and filters titles containing “lip balm”.
 - Synthesizes labels from ratings: >3 positive, =3 neutral, <3 negative.
 - Embeds text with SBERT (all-MiniLM-L6-v2, 384‑d) and images with CLIP ViT‑B/32 (512‑d); both L2‑normalized.
 - Builds two FAISS indices (text.index, image.index) with JSON metadata for fast k-NN retrieval.
 - Classifies via Ollama LLM (default granite3.2-vision).
 
+## Report
+Detailed report can be found [here](https://drive.google.com/file/d/1HA1x3jcnWxzX4ZewSNnvdCc2UA_fuCpm/view?usp=sharing)
+
 ## How to run
 
-Local (Windows/PowerShell)
+Python Environment
 ```powershell
-# Create venv and install
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install --upgrade pip
+# Clone repository
+git clone https://github.com/diemmylelelele/product_review_sentiment.git
+# Set Up a Python Virtual Environment
+python -m venv venv
+venv/Scrips/Activate
+# Install dependencies
 pip install -r requirements.txt
-
-# Ingest (downloads datasets)
-python data_ingest.py
-
-# Build FAISS indices
-python embed.py
-
-# Start Ollama in another terminal (for LLM classification)
-ollama serve
-ollama pull granite3.2-vision
-
+# Make sure to download Ollama on the machine and pull granite3.2-vision LLM model
 # Run the app
 python app.py
 # Open http://127.0.0.1:5000
@@ -38,11 +33,8 @@ Docker Compose
 ```powershell
 docker compose up --build
 
-# App:     http://127.0.0.1:5000
-# Ollama:  http://127.0.0.1:11434
-
 # (First run) pull model inside the Ollama container
-docker exec -it prs-ollama ollama pull gemma2:2b-instruct
+docker exec -it prs-ollama ollama pull granite3.2-vision:latest
 ```
 
 ## Example Usage
