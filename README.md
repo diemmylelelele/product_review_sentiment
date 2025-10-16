@@ -1,4 +1,4 @@
-# Product Review Sentiment (Multimodal)
+# Ecommerce Product Review Sentiment (Multimodal)
 
 AI system for sentiment analysis of niche e‑commerce product reviews (lip balm). Supports text and/or image input, retrieves similar examples, and predicts positive/neutral/negative using an LLM.
 
